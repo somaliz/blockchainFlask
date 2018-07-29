@@ -3,7 +3,6 @@ import json
 from time import time
 from urllib.parse import urlparse
 from uuid import uuid4
-
 import requests
 from flask import Flask, jsonify, request
 
@@ -21,14 +20,14 @@ class Blockchain:
         """
         Add a new node to the list of nodes
 
-        :param address: Address of node. Eg. 'http://192.168.0.5:5000'
+        :param address: Address of node. Eg. 'http://0.0.0.0:5000'
         """
 
         parsed_url = urlparse(address)
         if parsed_url.netloc:
             self.nodes.add(parsed_url.netloc)
         elif parsed_url.path:
-            # Accepts an URL without scheme like '192.168.0.5:5000'.
+            # Accepts an URL without scheme like '192.168.0.0:5000'.
             self.nodes.add(parsed_url.path)
         else:
             raise ValueError('Invalid URL')
@@ -36,7 +35,7 @@ class Blockchain:
 
     def valid_chain(self, chain):
         """
-        Determine if a given blockchain is valid
+        Determine if a given blockchain is valid or not
 
         :param chain: A blockchain
         :return: True if valid, False if not
@@ -50,12 +49,15 @@ class Blockchain:
             print(f'{last_block}')
             print(f'{block}')
             print("\n-----------\n")
-            # Check that the hash of the block is correct
+
+            # Check that the hash of the block is correct by comparing against last block hash
+
             last_block_hash = self.hash(last_block)
             if block['previous_hash'] != last_block_hash:
                 return False
 
             # Check that the Proof of Work is correct
+
             if not self.valid_proof(last_block['proof'], block['proof'], last_block_hash):
                 return False
 
@@ -68,6 +70,8 @@ class Blockchain:
         """
         This is our consensus algorithm, it resolves conflicts
         by replacing our chain with the longest one in the network.
+        this way is not 100% secure and it can be improved by adding 
+        the proof to the hash
 
         :return: True if our chain was replaced, False if not
         """
@@ -75,10 +79,12 @@ class Blockchain:
         neighbours = self.nodes
         new_chain = None
 
-        # We're only looking for chains longer than ours
+        # We're only looking for chains longer than our own 
+
         max_length = len(self.chain)
 
         # Grab and verify the chains from all the nodes in our network
+
         for node in neighbours:
             response = requests.get(f'http://{node}/chain')
 
@@ -91,7 +97,8 @@ class Blockchain:
                     max_length = length
                     new_chain = chain
 
-        # Replace our chain if we discovered a new, valid chain longer than ours
+        # Replace our chain if we discovered a new, valid chain longer than ours not 100% secure
+
         if new_chain:
             self.chain = new_chain
             return True
@@ -101,7 +108,6 @@ class Blockchain:
     def new_block(self, proof, previous_hash):
         """
         Create a new Block in the Blockchain
-
         :param proof: The proof given by the Proof of Work algorithm
         :param previous_hash: Hash of previous Block
         :return: New Block
@@ -122,6 +128,7 @@ class Blockchain:
         return block
 
     def new_transaction(self, sender, recipient, amount):
+
         """
         Creates a new transaction to go into the next mined Block
 
@@ -130,6 +137,7 @@ class Blockchain:
         :param amount: Amount
         :return: The index of the Block that will hold this transaction
         """
+
         self.current_transactions.append({
             'sender': sender,
             'recipient': recipient,
@@ -142,6 +150,7 @@ class Blockchain:
     def last_block(self):
         return self.chain[-1]
 
+
     @staticmethod
     def hash(block):
         """
@@ -151,10 +160,12 @@ class Blockchain:
         """
 
         # We must make sure that the Dictionary is Ordered, or we'll have inconsistent hashes
+
         block_string = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def proof_of_work(self, last_block):
+
         """
         Simple Proof of Work Algorithm:
 
@@ -164,6 +175,7 @@ class Blockchain:
         :param last_block: <dict> last Block
         :return: <int>
         """
+        
 
         last_proof = last_block['proof']
         last_hash = self.hash(last_block)
